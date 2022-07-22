@@ -1,0 +1,13 @@
+version: '3'
+services:
+  envoy:
+    # image: envoyproxy/envoy:v1.22.2
+    image: envoyproxy/envoy:v1.23.0
+    restart: always
+    ports:
+      # - "10000:10000"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./envoy.yaml:/etc/envoy/envoy.yaml
+      - ./certs:/etc/certs
