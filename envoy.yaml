@@ -1,0 +1,100 @@
+admin:
+  address:
+    socket_address: { address: 127.0.0.1, port_value: 9901 }
+
+
+static_resources:
+  address:
+    socket_address: { address: 0.0.0.0, port_value: 443 }
+  listener_filters:
+  - name: "envoy.filters.listener.tls_inspector"
+  filter_chains:
+  - filter_chain_match:
+      server_names: ["example.com", "www.example.com"]
+    transport_socket:
+      name: envoy.transport_sockets.tls
+      typed_config:
+        "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+        common_tls_context:
+          tls_certificates:
+          tls_certificates:
+          - certificate_chain: { filename: "/etc/certs/myhost2.example.com/fullchain1.pem" }
+            private_key: { filename: "/etc/certs/myhost2.example.com/privkey1.pem" }
+          #- certificate_chain:
+          #  filename: "/etc/certs/myhost1.example.com/fullchain1.pem"
+          #private_key:
+          #  filename: "/etc/certs/myhost1.example.com/privkey1.pem"
+    filters:
+    - name: envoy.filters.network.http_connection_manager
+      typed_config:
+        "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+        stat_prefix: ingress_http
+        route_config:
+          virtual_hosts:
+          - name: default
+            domains: "*"
+            routes:
+            - match: { prefix: "/" }
+              route: { cluster: be_myhost2 }
+  - filter_chain_match:
+      server_names: "myhost2.example.com"
+    transport_socket:
+      name: envoy.transport_sockets.tls
+      typed_config:
+        "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+        common_tls_context:
+          tls_certificates:
+          - certificate_chain: { filename: "/etc/certs/myhost2.example.com/fullchain1.pem" }
+            private_key: { filename: "/etc/certs/myhost2.example.com/privkey1.pem" }
+    filters:
+    - name: envoy.filters.network.http_connection_manager
+      typed_config:
+        "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+        stat_prefix: ingress_http
+        route_config:
+          virtual_hosts:
+          - name: default
+            domains: "*"
+            routes:
+            - match: { prefix: "/" }
+              route: { cluster: service_foo }
+
+  clusters:
+  - name: be_myhost1
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name:  be_myhost1
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: www.google.com
+                port_value: 443
+
+  - name: be_myhost2
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: be_myhost2
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: www.cisco.com
+                port_value: 443
+
+  - name: proxy-domain3
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: proxy-domain3
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.1
+                port_value: 443
